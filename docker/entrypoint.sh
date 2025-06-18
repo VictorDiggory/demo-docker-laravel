@@ -16,5 +16,9 @@ fi
 echo "🗄️ Running migrations..."
 php artisan migrate --force
 
+echo "🗄️ Clear cache..."
+php artisan optimize:clear
+composer dumpautoload
+
 # Khởi động php-fpm
 exec php-fpm
