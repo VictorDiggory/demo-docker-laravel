@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  # 1. Laravel App (PHP-FPM)
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: laravel_app
+    volumes:
+      - .:/var/www:rw
+    networks:
+      - laravel
+    depends_on:
+      - postgres
+      - rabbitmq
+
+  # 2. PostgreSQL
+  postgres:
+    image: postgres:15
+    container_name: pg_db
+    restart: always
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: laravel
+      POSTGRES_USER: laravel
+      POSTGRES_PASSWORD: secret
+    networks:
+      - laravel
+
+  # pgAdmin web UI
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: pgadmin
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    networks:
+      - laravel
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+
+
+  # 3. RabbitMQ
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - "15672:15672"  # Web UI
+      - "5672:5672"    # Message broker port
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    networks:
+      - laravel
+
+  # 4. Caddy web server
+  caddy:
+    image: caddy:2
+    container_name: caddy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+      - .:/var/www
+    depends_on:
+      - app
+    networks:
+      - laravel
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
+  pgadmin_data:
+
+networks:
+  laravel:
+    driver: bridge
